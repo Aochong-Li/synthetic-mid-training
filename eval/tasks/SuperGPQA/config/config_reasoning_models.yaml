@@ -1,0 +1,23 @@
+response_key: 'response'
+meta_response_key: 'meta_response'
+error_key: 'error'
+id_key:
+  - 'uuid'
+prompt_key: 'prompt'
+
+# claude-think
+thinking_type: 'enabled'
+budget_tokens: 32768
+
+history_key: 'history'
+status_key: 'status'
+
+save_prompt: True
+save_meta_response: True
+print_response: False
+print_meta_response: False
+max_tokens: 32768
+temperatrue: 0.0
+
+max_rounds: 30
+BoN: 32

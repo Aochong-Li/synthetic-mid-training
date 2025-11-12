@@ -1,0 +1,35 @@
+name: fixing-mmlu
+channels:
+  - pytorch
+  - nvidia
+  - huggingface
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - huggingface_hub
+  - pytorch
+  - torchvision
+  - torchaudio
+  - cudatoolkit=11.4
+  - datasets
+  - evaluate
+  - pip
+  - python-dotenv
+  - wandb
+  - scikit-learn
+  - accelerate
+  - isort
+  - sentencepiece
+  - matplotlib
+  - black
+  - pydantic
+  - pandas
+  - tqdm
+  - pynvml
+  - transformers == 4.40.1 # rob_m: required for llama 3 support
+  - tokenizers
+  - openai
+  - pyserini
+  - faiss-cpu
+

@@ -1,0 +1,13 @@
+defaults:
+  - model: qwen_think
+  - benchmarks: benchmarks
+  - _self_
+
+benchmarks_to_run: [gpqa,supergpqa,wmdp,mmlu,mmlu_redux,mmlu_pro,medqa_usmle,medmcqa,labbench]
+
+eval:
+  output_dir: outputs/
+  metrics: [mean]
+  overwrite: false
+  enable_thinking: true
+  is_base_model: false 

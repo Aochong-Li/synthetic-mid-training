@@ -1,0 +1,27 @@
+[project]
+name = "data"
+version = "0.1.0"
+requires-python = ">=3.10"
+
+dependencies = [
+    "torch",
+    "torchvision",
+    "torchaudio",
+    "pandas",
+    "numpy",
+    "tqdm",
+    "fasttext-wheel",
+    "datasets",
+    "scikit-learn",
+    "matplotlib",
+    "seaborn",
+    "pyarrow",
+    "zstandard",
+    "lxml",
+    "beautifulsoup4",
+    "requests",
+    "regex",
+    "jupyter>=1.1.1",
+    "nbclassic>=1.3.3",
+    "transformers>=4.57.1",
+]

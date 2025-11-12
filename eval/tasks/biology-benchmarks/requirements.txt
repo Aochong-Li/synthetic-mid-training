@@ -1,0 +1,15 @@
+python-dotenv
+ipykernel
+ipywidgets
+pandas
+datasets
+inspect-ai
+openai
+anthropic
+google-generativeai
+google-api-python-client
+mistralai
+tavily-python
+pyyaml
+matplotlib
+gradio_client

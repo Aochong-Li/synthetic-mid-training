@@ -1,0 +1,34 @@
+# Key for storing model's response content
+response_key: 'response'
+# Key for storing metadata about the response
+meta_response_key: 'meta_response'
+# Key for storing error messages
+error_key: 'error'
+# Key(s) for identifying samples, can be string or list
+id_key:
+  - 'uuid'
+# Key for storing prompt content
+prompt_key: 'prompt'
+
+# Claude thinking mode settings
+thinking_type: 'disabled'  # Controls Claude's thinking mode
+budget_tokens: 4096  # Token budget for thinking mode
+
+# Key for conversation history
+history_key: 'history'
+# Key for processing status
+status_key: 'status'
+
+# Save and print controls
+save_prompt: True  # Whether to save prompts in output
+save_meta_response: True  # Whether to save response metadata
+print_response: False  # Whether to print responses during inference
+print_meta_response: False  # Whether to print metadata during inference
+
+# Model generation parameters
+max_tokens: 4096  # Maximum tokens for model output
+temperatrue: 0.0  # Sampling temperature (0=deterministic)
+
+# Processing controls
+max_rounds: 30  # Maximum conversation rounds
+BoN: 32  # Batch size for batch-of-N processing

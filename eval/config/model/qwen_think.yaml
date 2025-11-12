@@ -1,0 +1,31 @@
+# Model Configuration (vLLM)
+
+model_name: Qwen/Qwen3-4B
+tokenizer_name: null 
+lora_path: null
+lora_name: adapter
+
+# Generation parameters
+max_tokens: 32768
+temperature: 0.6
+n: 1 
+top_p: 0.95
+top_k: 20
+stop_tokens: null
+logprobs: null
+prompt_logprobs: null
+
+# vLLM parameters
+max_model_len: 32768
+gpu_memory_utilization: 0.85
+dtype: bfloat16
+max_num_batched_tokens: null
+tensor_parallel_size: 1
+pipeline_parallel_size: 1
+distributed_executor_backend: mp
+trust_remote_code: true
+enable_chunked_prefill: true
+enable_prefix_caching: true
+enforce_eager: true
+data_parallel_replicas: 1
+ray_address: null
