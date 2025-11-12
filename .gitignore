@@ -1,0 +1,25 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.dll
+*.dylib
+
+# === Environments ===
+.env
+.venv/
+env/
+venv/
+.ipynb_checkpoints/
+*.egg-info/
+.eggs/
+.Python
+*.manifest
+*.spec
+
+# === subdirectories ===
+./train/
+.unit_tests/
+./outputs/
