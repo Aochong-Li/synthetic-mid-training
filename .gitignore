@@ -20,6 +20,6 @@ venv/
 *.spec
 
 # === subdirectories ===
-./train/
-.unit_tests/
-./outputs/
+train/
+unit-test/
+outputs/
