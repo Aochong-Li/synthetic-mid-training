@@ -51,7 +51,7 @@ class MMLUProBenchmark(Benchmark):
     CHOICES = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P"]
     LETTER_TO_INDEX = {letter: i for i, letter in enumerate(CHOICES)}
     INDEX_TO_LETTER = {i: letter for i, letter in enumerate(CHOICES)}
-    STEM_CATEGORIES = ["math", "physics", "chemistry", "biology", "computer science", "engineering", 'health', "other"]
+    STEM_CATEGORIES = ["math", "physics", "chemistry", "biology", "computer science", "engineering"]
 
     def __init__(
         self,
@@ -207,7 +207,7 @@ class MMLUProBenchmark(Benchmark):
 
         prompt = f"The following are multiple choice questions (with answers) about {category}. Think step by step and then finish your answer with \"the answer is (X)\" where X is the correct letter choice.\n\n"
         prompt += self._format_question_with_options(row['question'], options)
-        prompt += "Thinking: Let's think step by step."
+        # prompt += "Thinking: Let's think step by step."
         self.assistant_prompt = "The answer is "
 
         return prompt

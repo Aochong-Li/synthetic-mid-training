@@ -45,7 +45,7 @@ class MMLUBenchmark(Benchmark):
     STEM_SUBJECTS = [
         'abstract_algebra', 'anatomy', 'astronomy', 'college_biology', 'college_chemistry',
         'college_computer_science', 'college_mathematics', 'college_physics', 'computer_security',
-        'conceptual_physics', 'econometrics', 'electrical_engineering', 'elementary_mathematics',
+        'conceptual_physics', 'electrical_engineering', 'elementary_mathematics',
         'high_school_biology', 'high_school_chemistry', 'high_school_computer_science',
         'high_school_mathematics', 'high_school_physics', 'high_school_statistics',
         'machine_learning', 'medical_genetics', 'virology'
@@ -188,8 +188,10 @@ class MMLUBenchmark(Benchmark):
 
     def _base_prompt(self, row) -> str:
         """Base prompt format."""
-        subject_display = row['subject'].replace('_', ' ').title()
-        prompt = f"The following is a multiple choice question (with answers) about {subject_display}.\n\n"
+        # subject_display = row['subject'].replace('_', ' ').title()
+        # prompt = f"The following is a multiple choice question (with answers) about {subject_display}.\n\n"
+        
+        prompt = ""
         prompt += f"Question: {row['question']}\n"
         prompt += f"Choices:\n"
         prompt += f"(A) {row['choice_A']}\n"
@@ -200,15 +202,19 @@ class MMLUBenchmark(Benchmark):
 
     def _zero_shot_prompt(self, row) -> str:
         """Zero-shot prompt - just the question without examples."""
-        prompt = "Format your response as follows: \"The correct answer is (insert answer here)\".\n"
+        subject = row['subject']
+
+        prompt = "Format your response as follows: \"The correct answer is (insert answer here)\", where the answer is one of A, B, C, or D.\n"
+        prompt += f"The following is a multiple choice question (with answers) about {subject}.\n\n"
         prompt += self._base_prompt(row)
+
         self.assistant_prompt = "The correct answer is "
         return prompt
 
     def _few_shot_prompt(self, row) -> str:
         """Few-shot prompt - includes examples from dev split."""
         subject = row['subject']
-        prompt = "Format your response as follows: \"The correct answer is (insert answer here)\".\n"
+        prompt = "Format your response as follows: \"The correct answer is (insert answer here)\", where the answer is one of A, B, C, or D.\n"
         prompt += f"The following are multiple choice questions (with answers) about {row['subject'].replace('_', ' ').title()}.\n\n"
         
         self.assistant_prompt = "The correct answer is "

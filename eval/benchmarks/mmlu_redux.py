@@ -25,25 +25,44 @@ class MMLUReduxBenchmark(Benchmark):
     LETTER_TO_INDEX = {'A': 0, 'B': 1, 'C': 2, 'D': 3}
     INDEX_TO_LETTER = {0: 'A', 1: 'B', 2: 'C', 3: 'D'}
     MEDICAL_SUBJECTS = [
-                    "anatomy",
-                    "clinical_knowledge",
-                    "college_biology",
-                    "high_school_biology",
-                    "virology",
-                    "medical_genetics",
-                    "college_medicine",
-                    "professional_medicine",
-                    "human_aging",
-                    "nutrition",
-                    "human_sexuality",
-                    "professional_psychology",
-                    "high_school_psychology",
-                    "college_chemistry",
-                    "high_school_chemistry",
-                    "college_physics",
-                    "conceptual_physics",
-                    "high_school_physics"
-                ]
+        "anatomy",
+        "clinical_knowledge",
+        "college_biology",
+        "high_school_biology",
+        "virology",
+        "medical_genetics",
+        "college_medicine",
+        "professional_medicine",
+        "human_aging",
+        "nutrition",
+        "human_sexuality",
+        "professional_psychology",
+        "high_school_psychology",
+        "college_chemistry",
+        "high_school_chemistry",
+        "college_physics",
+        "conceptual_physics",
+        "high_school_physics"
+    ]
+    STEM_SUBJECTS = [
+        'anatomy',
+        'clinical_knowledge',
+        'college_chemistry',
+        'college_computer_science',
+        'college_mathematics',
+        'college_medicine',
+        'college_physics',
+        'electrical_engineering',
+        'high_school_chemistry',
+        'high_school_mathematics',
+        'high_school_physics',
+        'high_school_statistics',
+        'machine_learning',
+        'virology',
+        'conceptual_physics',
+        'astronomy',
+        'econometrics'
+    ]
 
     def __init__(
         self,
@@ -83,6 +102,8 @@ class MMLUReduxBenchmark(Benchmark):
             self.subjects = self.available_subjects
         elif subjects == "medical" or subjects == ["medical"]:
             self.subjects = self.MEDICAL_SUBJECTS
+        elif subjects == "stem" or subjects == ["stem"]:
+            self.subjects = self.STEM_SUBJECTS
         else:
             self.subjects = [subjects]
         
@@ -228,7 +249,7 @@ class MMLUReduxBenchmark(Benchmark):
         """Zero-shot prompt - just the question without examples."""
         subject_display = row['subject'].replace('_', ' ').title()
 
-        prompt = "Format your response as follows: \"The correct answer is (insert answer here)\".\n"
+        prompt = "Format your response as follows: \"The correct answer is (insert answer here)\", where the answer is one of A, B, C, or D.\n"
         prompt += f"The following is a multiple choice question (with answers) about {subject_display}.\n\n"
         prompt += self._base_prompt(row)
 

@@ -172,8 +172,8 @@ class GPQABenchmark(Benchmark):
 
     def _zero_shot_prompt(self, example: Example) -> str:
         """Zero-shot prompt (from GPQA utils.py)."""
-        prompt = self._base_prompt(example)
-        prompt += f"\n\nFormat your response as follows: \"The correct answer is (insert answer here)\""
+        prompt = f"Format your response as follows: \"The correct answer is (insert answer here)\".\n\n"
+        prompt += self._base_prompt(example)
         
         self.assistant_prompt = "The correct answer is "
 
