@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Parse PubMed baseline XML files and store metadata in SQLite database.
-Processes files in parallel with configurable number of workers.
+Uses producer-consumer pattern: workers parse XML, single writer inserts to DB.
+This avoids database lock contention.
 """
 
 import sqlite3
@@ -11,9 +12,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from multiprocessing import Manager, Process
+from queue import Empty
 from tqdm import tqdm
 import argparse
 import logging
+import time
 
 
 class PubMedXMLParser:
@@ -324,24 +328,17 @@ class PubMedDatabase:
 
             conn.commit()
 
-    def insert_articles(self, articles: List[Dict[str, Any]]) -> int:
-        """Insert articles into database. Returns number of inserted articles."""
+    def batch_insert_articles(self, articles: List[Dict[str, Any]]) -> int:
+        """Batch insert articles into database. Returns number of inserted articles."""
         if not articles:
             return 0
 
         inserted = 0
-        with sqlite3.connect(self.db_path, timeout=300.0) as conn:
-            for article in articles:
-                try:
-                    conn.execute("""
-                        INSERT OR REPLACE INTO pubmedmetadata (
-                            pmid, article_title, abstract, language,
-                            journal_title, journal_issn, journal_volume, journal_issue,
-                            pub_year, pub_month, pub_day, article_date,
-                            article_ids, authors, mesh_headings, keywords, article_references,
-                            citation_count, source_file, processed_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
+        with sqlite3.connect(self.db_path, timeout=600.0) as conn:
+            # Use executemany for batch insert
+            try:
+                data = [
+                    (
                         article["pmid"],
                         article["article_title"],
                         article["abstract"],
@@ -362,12 +359,24 @@ class PubMedDatabase:
                         article["citation_count"],
                         article["source_file"],
                         article["processed_at"]
-                    ))
-                    inserted += 1
-                except Exception as e:
-                    logging.error(f"Error inserting PMID {article.get('pmid')}: {e}")
+                    )
+                    for article in articles
+                ]
 
-            conn.commit()
+                conn.executemany("""
+                    INSERT OR REPLACE INTO pubmedmetadata (
+                        pmid, article_title, abstract, language,
+                        journal_title, journal_issn, journal_volume, journal_issue,
+                        pub_year, pub_month, pub_day, article_date,
+                        article_ids, authors, mesh_headings, keywords, article_references,
+                        citation_count, source_file, processed_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, data)
+
+                inserted = len(data)
+                conn.commit()
+            except Exception as e:
+                logging.error(f"Error batch inserting {len(articles)} articles: {e}")
 
         return inserted
 
@@ -384,25 +393,96 @@ class PubMedDatabase:
             return cursor.fetchone()[0]
 
 
-def process_file_worker(file_path: str, db_path: str) -> tuple:
-    """Worker function to process a single XML file."""
+def parse_file_worker(file_path: str) -> tuple:
+    """Worker function to parse a single XML file."""
     parser = PubMedXMLParser()
-    db = PubMedDatabase(db_path)
 
     try:
         # Parse XML file
         articles = parser.parse_xml_file(file_path)
-
-        # Insert into database
-        inserted = db.insert_articles(articles)
-
-        return True, Path(file_path).name, len(articles), inserted
+        return True, Path(file_path).name, articles
     except Exception as e:
-        return False, Path(file_path).name, 0, str(e)
+        return False, Path(file_path).name, str(e)
 
 
-def process_files_parallel(xml_dir: str, db_path: str, num_workers: int = 4, skip_processed: bool = True):
-    """Process PubMed XML files in parallel."""
+def database_writer_process(queue, db_path: str, total_files: int):
+    """Dedicated process for writing to database."""
+    db = PubMedDatabase(db_path)
+
+    processed_files = 0
+    total_articles = 0
+    total_inserted = 0
+
+    batch = []
+    batch_size = 5000  # Insert every 5000 articles
+
+    pbar = tqdm(total=total_files, desc="Processing files", position=0)
+
+    while True:
+        try:
+            # Get item from queue (timeout to check for completion)
+            item = queue.get(timeout=5)
+
+            if item is None:  # Poison pill to signal completion
+                break
+
+            success, filename, data = item
+
+            if success:
+                # Add articles to batch
+                batch.extend(data)
+
+                # Insert if batch is large enough
+                if len(batch) >= batch_size:
+                    inserted = db.batch_insert_articles(batch)
+                    total_inserted += inserted
+                    total_articles += len(batch)
+                    batch = []
+
+                processed_files += 1
+                pbar.update(1)
+                pbar.set_postfix({
+                    'articles': total_articles,
+                    'inserted': total_inserted,
+                    'batch': len(batch)
+                })
+            else:
+                logging.error(f"Failed to parse {filename}: {data}")
+                processed_files += 1
+                pbar.update(1)
+
+        except Empty:
+            # Check if there's a batch waiting
+            if batch:
+                inserted = db.batch_insert_articles(batch)
+                total_inserted += inserted
+                total_articles += len(batch)
+                pbar.set_postfix({
+                    'articles': total_articles,
+                    'inserted': total_inserted,
+                    'batch': 0
+                })
+                batch = []
+            continue
+
+    # Insert remaining batch
+    if batch:
+        inserted = db.batch_insert_articles(batch)
+        total_inserted += inserted
+        total_articles += len(batch)
+
+    pbar.close()
+
+    print(f"\n{'='*60}")
+    print(f"Database Writer Summary:")
+    print(f"  Files processed: {processed_files}")
+    print(f"  Articles parsed: {total_articles}")
+    print(f"  Articles inserted: {total_inserted}")
+    print(f"{'='*60}")
+
+
+def process_files_parallel(xml_dir: str, db_path: str, num_workers: int = 8, skip_processed: bool = True):
+    """Process PubMed XML files in parallel with dedicated database writer."""
     xml_dir = Path(xml_dir)
     xml_files = sorted(xml_dir.glob("pubmed25n*.xml"))
 
@@ -420,58 +500,47 @@ def process_files_parallel(xml_dir: str, db_path: str, num_workers: int = 4, ski
         print(f"Skipping {len(processed_files)} already processed files")
         xml_files = [f for f in xml_files if f.name not in processed_files]
 
-    print(f"Processing {len(xml_files)} files with {num_workers} workers")
+    if not xml_files:
+        print("No new files to process!")
+        return
 
-    # Process files in parallel
-    total_articles = 0
-    total_inserted = 0
-    failed_files = []
+    print(f"Processing {len(xml_files)} files with {num_workers} parser workers + 1 database writer")
 
+    # Create queue for communication
+    manager = Manager()
+    queue = manager.Queue(maxsize=num_workers * 2)  # Limit queue size
+
+    # Start database writer process
+    writer = Process(target=database_writer_process, args=(queue, db_path, len(xml_files)))
+    writer.start()
+
+    # Process files with worker pool
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         # Submit all tasks
         futures = {
-            executor.submit(process_file_worker, str(f), db_path): f
+            executor.submit(parse_file_worker, str(f)): f
             for f in xml_files
         }
 
-        # Process results with progress bar
-        with tqdm(total=len(xml_files), desc="Processing files") as pbar:
-            for future in as_completed(futures):
+        # Collect results and put in queue
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+                queue.put(result)
+            except Exception as e:
                 file_path = futures[future]
-                try:
-                    success, filename, count, result = future.result()
-                    if success:
-                        total_articles += count
-                        total_inserted += result
-                        pbar.set_postfix({
-                            'articles': total_articles,
-                            'inserted': total_inserted
-                        })
-                    else:
-                        failed_files.append((filename, result))
-                        print(f"\nFailed: {filename} - {result}")
-                except Exception as e:
-                    failed_files.append((file_path.name, str(e)))
-                    print(f"\nException processing {file_path.name}: {e}")
-                finally:
-                    pbar.update(1)
+                logging.error(f"Exception processing {file_path.name}: {e}")
+                queue.put((False, file_path.name, str(e)))
 
-    # Print summary
-    print("\n" + "=" * 60)
-    print("Processing Complete")
-    print(f"Total articles parsed: {total_articles:,}")
-    print(f"Total articles inserted: {total_inserted:,}")
-    print(f"Failed files: {len(failed_files)}")
+    # Signal writer to finish
+    queue.put(None)
 
-    if failed_files:
-        print("\nFailed files:")
-        for filename, error in failed_files:
-            print(f"  - {filename}: {error}")
+    # Wait for writer to finish
+    writer.join()
 
-    # Database stats
+    # Final stats
     total_in_db = db.count_articles()
     print(f"\nTotal articles in database: {total_in_db:,}")
-    print("=" * 60)
 
 
 def main():
@@ -483,8 +552,8 @@ def main():
                         help="Directory containing PubMed XML files")
     parser.add_argument("--db-path", type=str, default="/mnt/home/al2644/storage/pubmed/db/pubmed.db",
                         help="Path to SQLite database")
-    parser.add_argument("--workers", type=int, default=4,
-                        help="Number of parallel workers")
+    parser.add_argument("--workers", type=int, default=8,
+                        help="Number of parallel parser workers")
     parser.add_argument("--no-skip", action="store_true",
                         help="Don't skip already processed files")
 
