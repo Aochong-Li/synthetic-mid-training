@@ -4,3 +4,6 @@
 [submodule "marin"]
 	path = marin
 	url = https://github.com/marin-community/marin.git
+[submodule "nanotron"]
+	path = nanotron
+	url = git@github.com:Aochong-Li/nanotron.git
